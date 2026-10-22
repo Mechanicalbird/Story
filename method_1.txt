@@ -1,0 +1,33 @@
+! ===================================================================
+! ====== APDL Re-solution Loop for Dynamic Density Tuning    ======
+! ===================================================================
+/SOLU
+NLGEOM,ON
+
+*DO,i,1,5,1   ! Run the simulation in 5 consecutive compression increments
+    
+    ! --- Solve Current Increment ---
+    NSUBST,10,50,5
+    TIME,i
+    SOLVE
+    
+    ! --- Extract Current Volumetric Compression State ---
+    /POST1
+    SET,LAST
+    *GET,max_plvol,PLASTIC,0,VOLU,MAX  ! Get maximum plastic volume strain
+    /SOLU
+    
+    ! --- Calculate New Physical Parameters based on Compaction ---
+    ! Current Density rho = rho_0 * exp(-plastic_volumetric_strain)
+    new_rho = 1800.0 * EXP(-max_plvol)
+    new_E = 30000e6 * (1.0 + 2.5*max_plvol)  ! Scale stiffness upward with density
+    
+    ! --- Update Material Properties in Preprocessor ---
+    /PREP7
+    MP,DENS,matid,new_rho
+    MP,EX,matid,new_E
+    /SOLU
+    
+    ! --- Prepare Solver for next pressurized step ---
+    ANTYPE,,REST   ! Trigger a non-linear restart from the last converged substep
+*ENDDO

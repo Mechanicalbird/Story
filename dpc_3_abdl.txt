@@ -1,0 +1,72 @@
+
+/PREP7
+
+! Step 1: Define elastic and physical density properties of material
+E = 30000           ! Young's Modulus, MPa
+nu = 0.2            ! Poisson's Ratio, unitless
+rho_0 = 1.8e-9      ! Initial physical bulk density (scaled for mm-MPa consistency)
+
+! Step 2: Define microplane model properties 
+fc = 41             ! Uniaxial compressive strength, MPa
+fb = 48             ! Biaxial compressive strength, MPa (1.15*fc)
+ft = 4              ! Tensile strength, MPa (0.1*fc)
+Rt = 1              ! Tension cap hardening constant, unitless
+D = 20e4            ! Compressive hardening constant, MPa^2
+sigma_cv = -32      ! Int. of comp. cap and DP yield, MPa
+Rc = 2              ! Compression cap ratio constant, unitless
+gamma_t = 0         ! Tensile damage threshold, unitless
+gamma_c = 5e-5      ! Compressive damage threshold, unitless
+beta_t = 6000       ! Tension damage evolution, unitless
+beta_c = 4000       ! Compression damage evolution, unitless
+
+! Step 3: Define nonlocal parameters c and m
+c = 650             ! Nonlocal range parameter, mm^2 (element size should be < 0.5*sqrt(c))
+m = 2               ! Over-nonlocal parameter, unitless
+
+! Step 4: Select element type
+element = 215       ! Element type number (Linear = 215, Quadratic = 216)
+
+
+! ===================================================================
+! Material Property Assignment Section
+! ===================================================================
+
+! Assign Elastic & Density Properties 
+MP,EX,conc,E       ! Assign Young's Modulus
+MP,NUXY,conc,nu    ! Assign Poisson's Ratio
+MP,DENS,conc,rho_0  ! Assign Base Physical Mass Density
+
+! Assign microplane properties for coupled damaged-plasticity (MPLANE-DPC)
+TB,MPLANE,conc,,,DPC
+TBDATA,1,fc,fb,ft,Rt,D,sigma_cv
+TBDATA,7,Rc,gamma_t,gamma_c,beta_t,beta_c
+
+! Assign nonlocal properties to microplane model (MPLANE-NLOCAL)
+TB,MPLANE,conc,,,NLOCAL
+TBDATA,1,c,m
+
+! Define coupled elements
+itype = conc
+
+et,itype,element
+keyopt,itype,18,1     ! FIX: Set to 1 for Linear Element 215 (2 is for Quadratic 216)
+
+! Switch element type of those that are assigned Concrete
+esel,s,mat,,conc
+emodif,all,type,itype
+
+! Print the element list for verification
+allsel
+etlist,all
+
+! Proceed to the solution and output all results
+/SOLU
+outres,all,all
+
+
+
+
+1800 * (1 + abs(EPELY))
+
+
+conc = matid
